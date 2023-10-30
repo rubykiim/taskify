@@ -2,17 +2,27 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const taskSchema = new Schema({
-    author: mongoose.ObjectId,
+    author: {
+        type: mongoose.ObjectId,
+        ref: 'User',
+    },
     type: {
         type: String,
-        required: true
+        // required: true
     },
     title: String,
     dueDate: Date,
     dueTime: Date,
-    body: String,
-    assignees: [mongoose.ObjectId],
-    createdAt: { type: Date, default: Date.now, immutable: true }
+    description: String,
+    assignedUsers: [
+        {
+            type: mongoose.ObjectId,
+            ref: 'User',
+        },
+    ],
+    createdAt: { type: Date, default: Date.now, immutable: true },
 });
 
 const Task = mongoose.model('Task', taskSchema);
+
+module.exports = Task;
