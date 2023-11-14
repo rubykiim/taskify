@@ -13,14 +13,6 @@ const { appHomeOpenedCallback } = require('./listeners/events/app-home-opened');
 
 dotenv.config()
 
-// const initializeChatModel = () => {
-//     const chatModel = new ChatOpenAI({
-//         openAIApiKey: process.env.OPEN_API_KEY,
-//         temperature: 0.1
-//     });
-//     return chatModel
-// }
-
 const app = new App({
     token: process.env.SLACK_BOT_TOKEN,
     signingSecret: process.env.SLACK_SIGNING_SECRET
@@ -32,20 +24,27 @@ const chatModel = new ChatOpenAI({
 });
 
 app.event('message', async ({ event, client, logger, say }) => {
-    const text = event.text
-    const channel = event.channel
-    const author = event.user
     console.log('event', event)
+    const text = event.text
+    const author = event.user
 
+    const conversationsInfo = await client.conversations.info(
+        {
+            token: process.env.SLACK_BOT_TOKEN,
+            channel: event.channel
+        }
+    )
+
+    const channelId = conversationsInfo.channel.id
+    const channelName = conversationsInfo.channel.name
 
     const dayOfWeek = getDayOfWeek()
     const todayDate = getDate()
     console.log(dayOfWeek, todayDate)
 
-    // const chatModel = initializeChatModel();
+    // LLM
     const promptTemplate = PromptTemplate.fromTemplate(prompt.classifyTask);
     const chain = promptTemplate.pipe(chatModel);
-
     const result = await chain.invoke({ conversation: text, today: `${dayOfWeek}, ${todayDate}` });
     console.log('LLM result: ', result.content); // string
 
@@ -72,11 +71,13 @@ app.event('message', async ({ event, client, logger, say }) => {
             const splitResult = result.content.split("|separator|")
             const taskTitle = splitResult[0]
             const taskDeadline = splitResult[1]
+            // handle assignedUsers
 
-            // create new task
             let task = new Task({
                 // author: userId,
-                channel: channel,
+                _id: new mongoose.Types.ObjectId(),
+                channelId: channelId,
+                channelName: channelName,
                 title: taskTitle,
                 deadline: taskDeadline,
                 status: 'Pending'
