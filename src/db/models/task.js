@@ -5,8 +5,11 @@ const taskSchema = new Schema({
     channel: String,
     title: String,
     description: String,
-    dueDate: Date,
-    dueTime: Date,
+    deadline: String,
+    status: {
+        type: String,
+        enum: ['Pending', 'In Progress', 'Complete']
+    },
     author: {
         type: mongoose.ObjectId,
         ref: 'User',
