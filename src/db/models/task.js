@@ -2,7 +2,9 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const taskSchema = new Schema({
-    channel: String,
+    _id: mongoose.ObjectId,
+    channelId: String,
+    channelName: String,
     title: String,
     description: String,
     deadline: String,
