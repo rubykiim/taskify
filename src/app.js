@@ -13,31 +13,36 @@ const { appHomeOpenedCallback } = require('./listeners/events/app-home-opened');
 
 dotenv.config()
 
-const initializeChatModel = () => {
-    const chatModel = new ChatOpenAI({
-        openAIApiKey: process.env.OPEN_API_KEY,
-        temperature: 0.1
-    });
-    return chatModel
-}
+// const initializeChatModel = () => {
+//     const chatModel = new ChatOpenAI({
+//         openAIApiKey: process.env.OPEN_API_KEY,
+//         temperature: 0.1
+//     });
+//     return chatModel
+// }
 
 const app = new App({
     token: process.env.SLACK_BOT_TOKEN,
     signingSecret: process.env.SLACK_SIGNING_SECRET
 })
 
+const chatModel = new ChatOpenAI({
+    openAIApiKey: process.env.OPEN_API_KEY,
+    temperature: 0.1
+});
+
 app.event('message', async ({ event, client, logger, say }) => {
     const text = event.text
     const channel = event.channel
     const author = event.user
     console.log('event', event)
-    console.log('conversation', app.client.conversations.info(channel))
+
 
     const dayOfWeek = getDayOfWeek()
     const todayDate = getDate()
     console.log(dayOfWeek, todayDate)
 
-    const chatModel = initializeChatModel();
+    // const chatModel = initializeChatModel();
     const promptTemplate = PromptTemplate.fromTemplate(prompt.classifyTask);
     const chain = promptTemplate.pipe(chatModel);
 
@@ -48,8 +53,10 @@ app.event('message', async ({ event, client, logger, say }) => {
     // const userData = await await client.users.info()
     // console.log('userData', userData)
 
-    // TODO: algo to determine what to save or not
-    if (result.content !== 'This is not a task') {
+    if (result.content !== 'This is not a task.') {
+    // TODO: redesign saving logic
+    // assignee specified, save the task into that User
+    // not specified, save the task to every user in the same channel
         try {
             let user = await User.findOne({ userId });
             if (!user) {
@@ -62,11 +69,17 @@ app.event('message', async ({ event, client, logger, say }) => {
             }
             console.log('User found!')
 
+            const splitResult = result.content.split("|separator|")
+            const taskTitle = splitResult[0]
+            const taskDeadline = splitResult[1]
+
             // create new task
             let task = new Task({
                 // author: userId,
                 channel: channel,
-                description: result.content,
+                title: taskTitle,
+                deadline: taskDeadline,
+                status: 'Pending'
             })
             task.assignedUsers.push(user._id);
             await task.save()
@@ -81,14 +94,11 @@ app.event('message', async ({ event, client, logger, say }) => {
         }
     }
 
-
-    // Slack bot action
     say({
         text: result.content || 'Hello world!',
     });
 });
 
-// Listen for users opening your App Home
 app.event('app_home_opened', appHomeOpenedCallback);
 
 (async () => {
