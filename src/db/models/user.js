@@ -4,6 +4,7 @@ const { Schema } = mongoose;
 const userSchema = new Schema({
     _id: mongoose.ObjectId,
     userId: String,
+    firstName: String,
     tasks: [
         {
             type: mongoose.ObjectId,

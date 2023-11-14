@@ -2,18 +2,20 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const taskSchema = new Schema({
+    _id: mongoose.ObjectId,
+    channelId: String,
+    channelName: String,
+    title: String,
+    description: String,
+    deadline: String,
+    status: {
+        type: String,
+        enum: ['Pending', 'In Progress', 'Complete']
+    },
     author: {
         type: mongoose.ObjectId,
         ref: 'User',
     },
-    type: {
-        type: String,
-        // required: true
-    },
-    title: String,
-    dueDate: Date,
-    dueTime: Date,
-    description: String,
     assignedUsers: [
         {
             type: mongoose.ObjectId,
