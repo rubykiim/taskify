@@ -1,14 +1,38 @@
-const classifyTask = "I want you to analyze this conversation, {conversation}, whether it can be classified as a task. \
-        In other words, I want you to analyze whether the conversation contains \
-        task and deadline(due date and or time the task needs to be completed). \
-        For example, 'Please complete this survey by this Friday' contains 'survey' that can be a task \
-        and the person who said it wants people to complete it by this Friday. \
-        If the conversation is a task, please tell me the task and the deadline in this format. \
-        Task: the task you found, Deadline: the deadline you found.\
-        Also, if the task contains deadline, please convert it to an actual date and time.\
-        For example, if the task is due by 6pm this Friday, please find out what date 'this Friday' is and tell me the exact date.\
-        When outputting your answer, you don't need to tell me that the conversation can be classified as task.\
-        Do not say anything else but the task and dealine.\
-        If it is not a task, please say this is not a task."
+const classifyTask = "I want you to act as a classifier. Given the conversation, check whether they can be classified as a task.\
+Extract the task, deadline, and assignee(s).\
+If assignees are not specified, return All. \
+The format of the deadline should be Month Date, Time. Do not include the day of the week like Thursday or Monday in deadline.\
+\ Today is {today} \
+Below are examples of conversations and how information should be extracted: \
+\
+Conversation: Hi, team. Please finish this Google survey by Nov 9. \
+Output: Google Survey|separator|Nov 9|separator|All\
+\
+Conversation: Complete a proposal draft for your final project by December 10, 9pm. \
+Output: Proposal draft for final project|separator|Dec 10, 9:00pm|separator|All\
+\
+Conversation: Hey team, what do you want to eat for lunch? \
+Output: This is not a task.\
+\
+Conversation: Hi Ruby, please fill out the information in the Excel sheet by 6pm today. \
+Output: Fill out Excel sheet information|separator|{today}, 6:00pm|separator|Ruby\
+\
+Conversation: Good afternoon Jake and Shelly, please complete your reading by 5 November, 8:00pm. \
+Output: Complete Reading|separator|Nov 5, 8:00pm|separator|Jake,Shelly\
+\
+Conversation: Hi everybody, could you help me organizing the tax documents? Thanks!\
+Output: Organize tax documents|separator|No Due Date Assigned|separator|All\
+\
+Conversation: Hi Biz Dev team, please make sure to prepare for tomorrow's client meeting by November 18, EOD. \
+Output: Google Survey|separator|Nov 18, 11:59pm|separator|Biz Dev team\
+\
+Conversation: Hi team, please make sure to complete optimizing marketing campaigns by end of today. \
+Output: Google Survey|separator|{today}, 11:59pm|separator|All\
+\
+Conversation: Hi team, we need to update our database based on our discussion yesterday. Please complete it by tomorrow 7pm.\
+Output: Update databased|separator|Nov 15, 7pm|separator|All\
+\
+Conversation: {conversation} \
+Output: "
 
 exports.classifyTask = classifyTask;
