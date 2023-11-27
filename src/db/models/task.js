@@ -7,7 +7,7 @@ const taskSchema = new Schema({
     channelName: String,
     title: String,
     description: String,
-    deadline: String,
+    due: Schema.Types.Mixed,
     status: {
         type: String,
         enum: ['Pending', 'In Progress', 'Complete']
@@ -22,7 +22,6 @@ const taskSchema = new Schema({
             ref: 'User',
         },
     ],
-    createdAt: { type: Date, default: Date.now, immutable: true },
 });
 
 const Task = mongoose.model('Task', taskSchema);

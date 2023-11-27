@@ -2,7 +2,7 @@ const {
     HomeTab, Header, Divider, Section, Actions, Input, Bits, Elements
 } = require('slack-block-builder');
 // const pluralize = require('pluralize');
-// const { DateTime } = require('luxon');
+const { DateTime } = require('luxon');
 const { getDate } = require('../../utilities/get-date')
 const { getDayOfWeek } = require('../../utilities/get-day-of-week')
 
@@ -11,7 +11,7 @@ const TasksView = (user, allTasks) => {
     const todayDate = getDate()
 
     const homeTab = HomeTab({ callbackId: 'taskify-home', privateMetaData: 'open' }).blocks(
-        Header({ text: `Hi ${user.firstName} :wave:\nToday is ${dayOfWeek}, ${todayDate}` }),
+        Header({ text: `Hi ${user.firstName} :wave:\nToday is ${todayDate}, ${dayOfWeek}` }),
         Section({ text: '\n' }),
         Section({ text: '\n' }),
         Actions({ blockId: 'task-filter-actions' }).elements(
@@ -23,6 +23,7 @@ const TasksView = (user, allTasks) => {
                 .placeholder('Filter by user')
                 .actionId('app-home-user-select-action')
         ),
+        Section({ text: `*Tasks*\n` }),
         Divider()
     );
 
@@ -38,17 +39,38 @@ const TasksView = (user, allTasks) => {
       at a given time, so we break the Tasks list into chunks of ten
       and add them as multiple blocks.
     */
+
+    // Separate tasks into three arrays based on due type
+    const asapTasks = allTasks.filter(task => task.due === "ASAP");
+    const actualDateTasks = allTasks.filter(task => typeof task.due === 'object');
+    const flexibleTasks = allTasks.filter(task => task.due === "Flexible");
+
+    // Sort actual date tasks by due date
+    actualDateTasks.sort((a, b) => {
+        const dateA = DateTime.fromObject(a.due).toMillis();
+        const dateB = DateTime.fromObject(b.due).toMillis();
+        return dateA - dateB;
+    });
+    const tasksSorted = [...asapTasks, ...actualDateTasks, ...flexibleTasks];
+
     const tasksArray = [];
     let holdingArray = [];
     let start = 0;
-    const end = allTasks.length;
+    const end = tasksSorted.length;
     const maxOptionsLength = 10;
 
     for (start, end; start < end; start += maxOptionsLength) {
-        holdingArray = allTasks.slice(start, start + maxOptionsLength);
+        holdingArray = tasksSorted.slice(start, start + maxOptionsLength);
         holdingArray.forEach((task) => {
+            let taskDueFormatted;
+            if (task.due === "Flexible" || task.due === "ASAP") {
+                taskDueFormatted = task.due
+            } else {
+                const taskDueISO = DateTime.fromObject(task.due).toISO()
+                taskDueFormatted = DateTime.fromISO(taskDueISO).toFormat('LLL dd h:mma, EEEE')
+            }
             tasksArray.push(
-                Section({ text: `*${task.title}*\n*Due* ${task.deadline}  |  ${task.channelName}  ·  <@${user.userId}>` })
+                Section({ text: `*${task.title}*\n*Due* ${taskDueFormatted}  |  ${task.channelName}  ·  <@${user.userId}>` })
                     .accessory(
                         Elements.OverflowMenu()
                             .options([

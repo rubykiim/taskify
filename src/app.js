@@ -7,7 +7,7 @@ const db = require('./db/db')
 const mongoose = require('mongoose');
 const User = require('./db/models/user')
 const Task = require('./db/models/task')
-const { getDate } = require('./utilities/get-date')
+const { DateTime } = require('luxon');
 const { getDayOfWeek } = require('./utilities/get-day-of-week')
 const { appHomeOpenedCallback } = require('./listeners/events/app-home-opened');
 
@@ -37,15 +37,18 @@ app.event('message', async ({ event, client, logger, say }) => {
 
     const channelId = conversationsInfo.channel.id
     const channelName = conversationsInfo.channel.name
+    console.log('conversationsInfo.channel', conversationsInfo.channel)
 
     const dayOfWeek = getDayOfWeek()
-    const todayDate = getDate()
-    console.log(dayOfWeek, todayDate)
+    const dt = DateTime.now()
+    const todayYear = dt.year
+    const todayMonth = dt.month
+    const todayDate = dt.day
 
     // LLM
     const promptTemplate = PromptTemplate.fromTemplate(prompt.classifyTask);
     const chain = promptTemplate.pipe(chatModel);
-    const result = await chain.invoke({ conversation: text, today: `${dayOfWeek}, ${todayDate}` });
+    const result = await chain.invoke({ conversation: text, dayOfWeek: dayOfWeek, todayYear: todayYear, todayMonth: todayMonth, todayDate: todayDate });
     console.log('LLM result: ', result.content); // string
 
     const userId = event.user // message author
@@ -68,10 +71,29 @@ app.event('message', async ({ event, client, logger, say }) => {
             }
             console.log('User found!')
 
-            const splitResult = result.content.split("|separator|")
-            const taskTitle = splitResult[0]
-            const taskDeadline = splitResult[1]
-            // handle assignedUsers
+            const resultArray = result.content.split("|separator|")
+            const taskTitle = resultArray[0]
+
+            let taskDue;
+            if (resultArray[1] === "Flexible") {
+                taskDue = resultArray[1]
+            } else if (resultArray[1].toUpperCase() === "ASAP") {
+                taskDue = "ASAP"
+            } else {
+                const taskDueArray = resultArray[1].split("-")
+                taskDue = taskDueArray.reduce((acc, curr) => {
+                    const item = curr.split(":")
+                    acc[item[0]] = Number(item[1])
+                    for (const [key, val] of Object.entries(acc)) {
+                        if (!val) {
+                            console.log("Invalud taskDue value: check prompt result")
+                            return
+                        } else {
+                            return acc
+                        }
+                    }
+                }, {})
+            }
 
             let task = new Task({
                 // author: userId,
@@ -79,7 +101,7 @@ app.event('message', async ({ event, client, logger, say }) => {
                 channelId: channelId,
                 channelName: channelName,
                 title: taskTitle,
-                deadline: taskDeadline,
+                due: taskDue,
                 status: 'Pending'
             })
             task.assignedUsers.push(user._id);
@@ -88,7 +110,6 @@ app.event('message', async ({ event, client, logger, say }) => {
             user.tasks.push(task._id);
             await user.save();
             console.log('User updated with new task.');
-
 
         } catch (error) {
             logger.error(error)
