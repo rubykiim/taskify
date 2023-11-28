@@ -9,14 +9,14 @@ const getPromptInput = () => {
     const thisMonday = today.startOf('week');
     const nextMonday = thisMonday.plus({ weeks: 1 });
 
-    const thisWeekDates = [];
+    const thisWeekDates = []; // 0...6 -> Mon...Sun
     daysOfWeek.forEach((day) => {
         const currentDate = thisMonday;
         const formattedDate = currentDate.plus({ days: daysOfWeek.indexOf(day) }).toFormat("'year:'yyyy'-month:'LL'-day:'dd");
         thisWeekDates.push(formattedDate);
     });
 
-    const nextWeekDates = [];
+    const nextWeekDates = []; // 0...6 -> Mon...Sun
     daysOfWeek.forEach((day) => {
         const currentDate = nextMonday;
         const formattedDate = currentDate.plus({ days: daysOfWeek.indexOf(day) }).toFormat("'year:'yyyy'-month:'LL'-day:'dd");

@@ -7,8 +7,7 @@ const db = require('./db/db')
 const mongoose = require('mongoose');
 const User = require('./db/models/user')
 const Task = require('./db/models/task')
-const { DateTime } = require('luxon');
-const { getDayOfWeek } = require('./utilities/get-day-of-week')
+const { getPromptInput } = require('./utilities/get-prompt-input');
 const { appHomeOpenedCallback } = require('./listeners/events/app-home-opened');
 
 dotenv.config()
@@ -37,18 +36,30 @@ app.event('message', async ({ event, client, logger, say }) => {
 
     const channelId = conversationsInfo.channel.id
     const channelName = conversationsInfo.channel.name
-    console.log('conversationsInfo.channel', conversationsInfo.channel)
 
-    const dayOfWeek = getDayOfWeek()
-    const dt = DateTime.now()
-    const todayYear = dt.year
-    const todayMonth = dt.month
-    const todayDate = dt.day
+    const conversationsMembers = await client.conversations.members(
+        {
+            token: process.env.SLACK_BOT_TOKEN,
+            channel: event.channel
+        }
+    )
+    const channelMembers = conversationsMembers.members // Array of userIDs
+
+    const { dayOfWeek, today, thisWeekDates, nextWeekDates } = getPromptInput()
+    const todayYear = today.year
+    const todayMonth = today.month
+    const todayDate = today.day
+    console.log('today', today)
 
     // LLM
     const promptTemplate = PromptTemplate.fromTemplate(prompt.classifyTask);
     const chain = promptTemplate.pipe(chatModel);
-    const result = await chain.invoke({ conversation: text, dayOfWeek: dayOfWeek, todayYear: todayYear, todayMonth: todayMonth, todayDate: todayDate });
+    const result = await chain.invoke(
+        {
+            conversation: text, dayOfWeek: dayOfWeek, todayYear: todayYear, todayMonth: todayMonth, todayDate: todayDate,
+            thisMonday: thisWeekDates[0], thisTuesday: thisWeekDates[1], thisWednesday: thisWeekDates[2], thisThursday: thisWeekDates[3], thisFriday: thisWeekDates[4], thisSaturday: thisWeekDates[5], thisSunday: thisWeekDates[6],
+            nextMonday: nextWeekDates[0], nextTuesday: nextWeekDates[1], nextWednesday: nextWeekDates[2], nextThursday: nextWeekDates[3], nextFriday: nextWeekDates[4], nextSaturday: nextWeekDates[5], nextSunday: nextWeekDates[6],
+        });
     console.log('LLM result: ', result.content); // string
 
     const userId = event.user // message author
@@ -76,7 +87,7 @@ app.event('message', async ({ event, client, logger, say }) => {
 
             let taskDue;
             if (resultArray[1] === "Flexible") {
-                taskDue = resultArray[1]
+                taskDue = "Flexible"
             } else if (resultArray[1].toUpperCase() === "ASAP") {
                 taskDue = "ASAP"
             } else {
@@ -115,6 +126,22 @@ app.event('message', async ({ event, client, logger, say }) => {
             logger.error(error)
         }
     }
+
+    async function deleteAllTasks() {
+        try {
+            // Use the deleteMany function to delete all documents in the 'tasks' collection
+            const result = await Task.deleteMany({});
+
+            // Log the result or perform any other actions
+            console.log(`${result.deletedCount} documents deleted`);
+
+        } catch (error) {
+            // Handle errors
+            console.error('Error deleting tasks:', error);
+        }
+    }
+
+    // deleteAllTasks();
 
     say({
         text: result.content || 'Hello world!',
